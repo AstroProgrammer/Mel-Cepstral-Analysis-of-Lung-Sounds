@@ -1,0 +1,128 @@
+clc,clear all;
+close all;
+         % Record for 10 seconds.
+            %recObj = audiorecorder;
+            recObj = audiorecorder(96000, 16, 1);
+    disp('Start Recording.')
+    recordblocking(recObj,5);
+     disp('End of Recording.');
+    get(recObj);
+    myspeech = getaudiodata(recObj);
+ a1 = myspeech ;
+ fs = 96000;
+%[a1,fs]=wavread('C:/Users/Naveen/Desktop/unprocessed');
+figure,plot(a1);
+title('Specimen Lung Sound');
+xlabel('Time (s)');
+ylabel('Amplitude');
+display(fs);%getting original smp rt from the signal. 
+a1=double(a1);
+%normalization
+a1=(a1/max(abs(a1)));
+
+
+N=length(a1);
+%dc offset removal
+ a1=a1-mean(a1);
+
+
+%windowing
+hmw=hamming(N);
+
+[m,n]=size(a1)
+
+ if(m==1)
+ temp=a1.*hmw';
+else if(n==1)
+    temp=a1.*hmw;
+     else
+     end
+ end
+a1=temp;
+
+%taking fft
+n=ceil(log2(N));
+nz=2^n;
+% m=nz-N;
+% x_z=padarray(a1,[0 m],'post')
+x_z=0*[1:nz];
+x_z(1:N)=a1;
+X=fft(x_z);
+x1=abs(X);
+w=double([0:nz-1])*(fs/nz);
+figure,stem(w,x1);
+title('Spectrum of Lung Sound');
+xlabel('Frequency(Hz)');
+ylabel('Magnitude');
+
+
+%l=input('enter the lowest frequency range of mel filterbank');
+%h=input('enter the highiest frequency of melfilter bank');
+l=50;
+h=2500;
+%convert the upper and lower frequency value to mel scale
+fml=1125*log(1+(l/700));
+fmh=1125*log(1+(h/700));
+%No of filterbanks be 20
+ M=20;
+ m=1:M;
+%devide the range into intervals
+ v=(fmh-fml)/(M+1);
+vv=v*m
+ z=vv+fml;
+%display(z);
+ z1=z/1125;
+ z1=exp(z1);
+ z1=z1-1;
+ z1=z1*700;
+%display(z1);
+%convert frequency into indices
+fm=(nz/fs)*z1;
+% display(fm);
+% %xxxx=fm(1);
+ee=l*(nz/fs)
+ff=h*(nz/fs)
+% gg=zeros(1,M+2);
+% gg(2:M+1)=fm;
+% gg(1)=ee;
+% gg(M+2)=ff;
+% gg=round(gg);
+% display(gg);
+gg=padarray(fm,[0 1],ee,'pre');
+gg=padarray(gg,[0 1],ff,'post');
+for i=2:length(gg)-1
+for j=1:length(x1)
+if j<gg(i-1)||j>gg(i+1)
+temp=0;
+else
+if j>=gg(i-1)&&j<gg(i)
+temp=(j-gg(i-1))/(gg(i)-gg(i-1));
+else
+if j>=gg(i)&&j<=gg(i+1)
+temp=(gg(i+1)-j)/(gg(i+1)-gg(i));
+end
+end
+end
+hmk(j)=temp;
+end
+     q=(0:length(hmk)-1)*(fs/length(hmk));
+plot(q,hmk);
+axis([0,h,0,1]);
+title('Response of Mel Filter Bank');
+xlabel('Frequency in Hz');
+ylabel('Gain');
+hold on
+s(i-1)=log(sum((x1.^2).*hmk));
+end
+for n=1:M 
+sum=0;
+for m=1:M
+sum=sum+(s(m)*cos(pi*n*(m-0.5)/M));
+end
+c(n)=sum; 
+end
+display(c);
+figure,plot(c);
+title('Mel-Cepstrum');
+xlabel('Indices');
+ylabel('Mel-Cepstral Coefficients');
